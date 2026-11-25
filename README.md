@@ -12,6 +12,10 @@ Download the installer from [Releases](../../releases). It installs for the curr
 
 The installer is not code-signed yet, so SmartScreen will warn about it.
 
+## Updates
+
+Hisn checks GitHub for a new version twice a day and notifies you. Updates are signed, replace the installed version, and can be installed automatically from Settings.
+
 ## Features
 
 - Scans protected folders, and new files as they arrive

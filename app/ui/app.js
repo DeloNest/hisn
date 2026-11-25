@@ -130,9 +130,14 @@ function zoneRow(z) {
     main.length > 0 && exp("z" + z.path, `${main.length} للمراجعة`, groups(z, main, "m")),
     quiet.length > 0 && exp("q" + z.path, `${quiet.length} بلا ناشر معروف · شائع في الألعاب`, groups(z, quiet, "n")));
 }
+function updateCard() {
+  const u = S.update;
+  return el("div", { class: "card" }, el("div", { class: "row" }, ic("scan", "ic"), el("div", { class: "grow" }, el("div", { class: "t1" }, "يتوفر تحديث " + u.version), el("div", { class: "sub" }, u.busy ? "جاري التنزيل والتحقق من التوقيع…" : "يستبدل النسخة الحالية ويحتفظ بإعداداتك.")),
+    btn("p", "scan", "تحديث", async () => { if (await ask("تحديث حصن؟", "سيُغلق حصن ويعود بعد التثبيت.\n\n" + u.notes, "تحديث")) call("update_install"); }, { disabled: u.busy })), u.busy && el("div", { class: "prog" }));
+}
 function home() {
   const fact = (k, t, s) => row(k === "ok" ? "ok" : k === "warn" ? "warn" : "bad", t, s, badge(k, k === "ok" ? "محمي" : k === "warn" ? "جزئي" : "غير محمي"));
-  return [hero(), S.running.length > 0 && el("h2", {}, "يعمل الآن"), ...S.running.map(running),
+  return [hero(), S.update && updateCard(), S.running.length > 0 && el("h2", {}, "يعمل الآن"), ...S.running.map(running),
     el("div", { class: "h2" }, el("h2", {}, "المجلدات المحمية"), btn("p", "add", "إضافة مجلد", addZone)),
     S.zones.length === 0 && el("div", { class: "card" }, empty("zone", "لا توجد مجلدات", "يفحص حصن المجلد ويراقب كل ملف جديد فيه.")),
     ...S.zones.map(zoneRow),
@@ -213,6 +218,9 @@ function settings() {
     group(row("power", "التشغيل مع Windows", "يبدأ بهدوء في الخلفية.", sw("التشغيل مع Windows", S.autostart, (v) => save({}, v))),
       row("bell", "الإشعارات", null, tog("الإشعارات", "notify")),
       row("theme", "المظهر", null, el("select", { "aria-label": "المظهر", onchange: (e) => save({ theme: e.target.value }) }, ...[["system", "حسب Windows"], ["light", "فاتح"], ["dark", "داكن"]].map(([v, t]) => el("option", { value: v, selected: s.theme === v }, t))))),
+    el("h2", {}, "التحديثات"), S.update && updateCard(),
+    group(row("scan", "الإصدار " + S.version, "البحث يتصل بـ GitHub مرتين يومياً.", btn("b", null, "بحث عن تحديث", async () => { const r = await call("update_check"); if (r === false) toast("عندك أحدث إصدار."); })),
+      row("power", "التحديث التلقائي", "يثبّت عندما تكون النافذة مغلقة ولا يعمل برنامج معزول.", tog("التحديث التلقائي", "auto_update"))),
     el("div", { class: "card only" }, exp("adv", "خيارات متقدمة",
       row("bg", "البقاء في الخلفية عند الإغلاق", "للإنهاء: زر يمين على الأيقونة قرب الساعة.", tog("البقاء في الخلفية", "background")),
       row("eye", "مراقبة الملفات الجديدة", null, tog("المراقبة", "watch")),

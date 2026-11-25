@@ -1,6 +1,6 @@
 {
   "productName": "Hisn",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "local.hisn.app",
   "build": {
     "frontendDist": "ui"
@@ -53,6 +53,18 @@
           "Arabic"
         ],
         "displayLanguageSelector": false
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRDQUM1RTJFQzM3RTVCNzcKUldSM1czN0RMbDZzVEMxeFB0Qk9jcW52VXQ0ZlRGUkJNTGNkeU94N2NUem9XWHdXTTBWNWhFMUYK",
+      "endpoints": [
+        "https://github.com/DeloNest/hisn/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

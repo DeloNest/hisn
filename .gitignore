@@ -3,3 +3,4 @@ plan*.md
 *.sealed
 .env*
 app/gen/
+*.key

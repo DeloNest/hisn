@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod update;
 mod watch;
 
 use hisn::{container, ops, screen::{self, Screen}, quarantine, scan::Verdict, util::*, zone};
@@ -26,10 +27,10 @@ const NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(default)]
-pub struct Settings { pub watch: bool, pub auto_quarantine: bool, pub background: bool, pub notify: bool, pub theme: String }
+pub struct Settings { pub watch: bool, pub auto_quarantine: bool, pub background: bool, pub notify: bool, pub auto_update: bool, pub theme: String }
 impl Default for Settings {
     fn default() -> Self {
-        Self { watch: true, auto_quarantine: true, background: true, notify: true, theme: "system".into() }
+        Self { watch: true, auto_quarantine: true, background: true, notify: true, auto_update: false, theme: "system".into() }
     }
 }
 /// Permissions belong to the exact file content; a changed program starts over with none.
@@ -77,7 +78,7 @@ pub fn log(app: &AppHandle, level: &str, text: &str, path: &Path) {
     let _ = app.emit("changed", ());
 }
 /// Arabic text for errors that reach the user.
-fn ar(e: String) -> String {
+pub fn ar(e: String) -> String {
     let t = [
         ("scan the zone first", "افحص المنطقة أولاً قبل تشغيل أي برنامج منها."),
         ("still holds a malicious", "مرفوض: في المنطقة ملف خبيث. احجره أو احذفه أولاً."),
@@ -111,7 +112,7 @@ struct ZoneView { path: String, exists: bool, scanned: bool, files: usize, skipp
 #[derive(Serialize)]
 struct RunView { id: u32, path: String, net: bool, private: bool }
 #[derive(Serialize)]
-struct Snapshot { zones: Vec<ZoneView>, quarantine: Vec<quarantine::Item>, running: Vec<RunView>, settings: Settings, autostart: bool, watching: bool }
+struct Snapshot { zones: Vec<ZoneView>, quarantine: Vec<quarantine::Item>, running: Vec<RunView>, settings: Settings, autostart: bool, watching: bool, version: String, update: Option<update::View> }
 
 #[tauri::command(async)]
 fn snapshot(app: AppHandle, core: State<Core>) -> Res<Snapshot> {
@@ -135,7 +136,8 @@ fn snapshot(app: AppHandle, core: State<Core>) -> Res<Snapshot> {
     }
     let running = core.running.lock().unwrap().iter().map(|r| RunView { id: r.id, path: r.path.clone(), net: r.net, private: r.private }).collect();
     let watching = core.watcher.lock().unwrap().is_some();
-    Ok(Snapshot { zones, quarantine: quarantine::list()?, running, settings: settings()?, autostart: app.autolaunch().is_enabled().unwrap_or(false), watching })
+    let (version, update) = (app.package_info().version.to_string(), update::view(&app));
+    Ok(Snapshot { version, update, zones, quarantine: quarantine::list()?, running, settings: settings()?, autostart: app.autolaunch().is_enabled().unwrap_or(false), watching })
 }
 
 /// None when Windows could not tell us.
@@ -470,10 +472,12 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--background"])))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Core::default())
+        .manage(update::Updates::default())
         .invoke_handler(tauri::generate_handler![
             snapshot, defender, allowed_threats, reveal, open_security, zone_add, zone_remove, zone_scan, programs, set_perm, launch, stop, enter_screen,
-            q_restore, q_delete, q_add, events, save_settings, clean
+            q_restore, q_delete, q_add, events, save_settings, clean, update::update_check, update::update_install
         ])
         .setup(|app| {
             let h = app.handle().clone();
@@ -503,6 +507,7 @@ fn main() {
                 show(&h);
             }
             rewatch(&h);
+            update::start(h);
             Ok(())
         })
         .build(tauri::generate_context!())
